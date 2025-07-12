@@ -1,310 +1,297 @@
 #ifndef GRAPH_HPP
 #define GRAPH_HPP
 
-#include <set>
-#include <map>
-#include <string>
-#include <stack>
-#include <vector>
 #include <iostream>
+#include <map>
+#include <set>
+#include <stack>
+#include <string>
+#include <vector>
 
 namespace ACT {
 namespace DOT {
 
-	typedef std::map< std::string, std::string> AttrList;
+typedef std::map<std::string, std::string> AttrList;
 
-	struct NodePort {
-		std::string first_, second_;
-		NodePort() : first_(""), second_("") {}
-	};
+struct NodePort {
+    std::string first_, second_;
+    NodePort() : first_(""), second_("") {}
+};
 
+class GraphDot;
 
-		class GraphDot;
+class Node;
 
+class Edge {
+  public:
+    Edge(Node* h, Node* t) : head_(h), tail_(t) {}
+    ~Edge() {}
 
-	class Node;
+    Node* head() { return head_; }
+    Node* tail() { return tail_; }
 
-	class Edge
-	{
-	public:
-		Edge(Node* h, Node* t) : head_(h), tail_(t) {}
-		~Edge() {}
+    void add_attribute(const std::string& k, const std::string& v) {
+        attrs_[k] = v;
+    }
 
-		Node* head() { return head_; }
-		Node* tail() { return tail_; }
+    AttrList& attributes() { return attrs_; }
 
-		void add_attribute(const std::string& k, const std::string& v)
-		{
-			attrs_[k] = v;
-		}
+  private:
+    Node *head_, *tail_;
+    AttrList attrs_;
+};
 
-		AttrList& attributes() { return attrs_; }
+typedef std::vector<Edge*> Edges;
 
-	private:
-		Node* head_, *tail_;
-		AttrList attrs_;
-	};
+class Node {
+  public:
+    virtual Edges& pred() = 0;
+    virtual Edges& succ() = 0;
+    virtual std::string name() = 0;
+    virtual void visited(bool v) = 0;
+    virtual bool visited() = 0;
+    int level;
+};
 
-	typedef std::vector< Edge *> Edges;
+typedef std::set<Node*> NodeSet;
 
-	class Node
-	{
-	public:
-		virtual Edges& pred() = 0;
-		virtual Edges& succ() = 0;
-		virtual std::string name() = 0;
-		virtual void visited(bool v) = 0;
-		virtual bool visited() = 0;
-		int level;
-	};
+class NodeImpl : public Node {
+  public:
+    NodeImpl(const std::string& name) : name_(name), visited_(false), angle_("") {}
+    ~NodeImpl() {}
+    virtual std::string name() { return name_; }
+    virtual Edges& pred() { return pred_; }
+    virtual Edges& succ() { return succ_; }
+    virtual void visited(bool v) { visited_ = v; }
+    virtual bool visited() { return visited_; }
+    void add_attribute(const std::string& k, const std::string& v);
+    AttrList& attributes() { return attrs_; }
+    void add_port_angle(const std::string& a) { angle_ = a; }
+    std::string port_angle() { return angle_; }
+    void add_port_location(const std::string& l0, const std::string& l1) {
+        loc_.first_ = l0;
+        loc_.second_ = l1;
+    }
+    NodePort& port_location() { return loc_; }
 
-	typedef std::set<Node*> NodeSet;
+  private:
+    bool visited_;
+    std::string name_;
+    Edges pred_, succ_;
+    AttrList attrs_;
+    std::string angle_;
+    NodePort loc_;
+};
 
-	class NodeImpl : public Node
-	{
-	public:
-		NodeImpl(const std::string& name): name_(name), visited_(false), angle_("")  {}
-		~NodeImpl() {}
-		virtual std::string name() { return name_; }
-		virtual Edges& pred() { return pred_; }
-		virtual Edges& succ() { return succ_; }
-		virtual void visited(bool v) { visited_ = v; }
-		virtual bool visited() { return visited_; }
-		void add_attribute(const std::string& k, const std::string& v);
-		AttrList& attributes() { return attrs_; }
-		void add_port_angle(const std::string& a) { angle_ = a;}
-		std::string port_angle() { return angle_; }
-		void add_port_location(const std::string& l0, const std::string& l1) { loc_.first_ = l0; loc_.second_ = l1; }
-		NodePort& port_location() { return loc_; }
-	private:
+class Graph : public Node {
+  public:
+    Graph(const std::string& name) : name_(name), visited_(false), is_strict_(false), is_directed_(false), nsubgr_(0) {}
+    ~Graph() {}
 
-		bool visited_;
-		std::string name_;
-		Edges pred_, succ_;
-		AttrList attrs_;
-		std::string angle_;
-		NodePort loc_;
-	};
+    virtual std::string name() { return name_; }
+    virtual Edges& pred() { return pred_; }
+    virtual Edges& succ() { return succ_; }
+    virtual void visited(bool v) { visited_ = v; }
+    virtual bool visited() { return visited_; }
 
-	class Graph : public Node
-	{
-	public:
-		Graph(const std::string& name) : name_(name), visited_(false), is_strict_(false), is_directed_(false), nsubgr_(0)  {}
-		~Graph() {}
+    Node* add_node(const std::string& name, Node* node);
+    Edge* add_edge(Node* head, Node* tail, bool is_directed);
+    void roots(NodeSet& r);
+    void ends(NodeSet& r);
+    void List(NodeSet& r);
+    void clear_visited();
+    void RED(void);
+    void PrintLevel(void);
+    void strict(bool s) { is_strict_ = s; }
+    bool strict() { return is_strict_; }
 
-		virtual std::string name() { return name_; }
-		virtual Edges& pred() { return pred_; }
-		virtual Edges& succ() { return succ_; }
-		virtual void visited(bool v) { visited_ = v; }
-		virtual bool visited() { return visited_;}
+    void directed(bool d) { is_directed_ = d; }
+    bool directed() { return is_directed_; }
 
-		Node* add_node(const std::string& name, Node* node);
-		Edge* add_edge(Node* head, Node* tail, bool is_directed);
-		void roots(NodeSet& r);
-		void ends(NodeSet& r);
-		void List(NodeSet& r);
-		void clear_visited();
-		void RED(void);
-		void PrintLevel(void);
-		void strict(bool s) { is_strict_ = s; }
-		bool strict() { return is_strict_; }
+    void add_graph_attribute(const std::string& k, const std::string& v);
+    void add_node_attribute(const std::string& k, const std::string& v);
+    void add_edge_attribute(const std::string& k, const std::string& v);
 
-		void directed(bool d) { is_directed_ = d; }
-		bool directed() { return is_directed_; }
+    AttrList& graph_attributes() { return graph_attrs_; }
+    AttrList& node_attributes() { return node_attrs_; }
+    AttrList& edge_attributes() { return edge_attrs_; }
 
-		void add_graph_attribute(const std::string& k, const std::string& v);
-		void add_node_attribute(const std::string& k, const std::string& v);
-		void add_edge_attribute(const std::string& k, const std::string& v);
+  private:
+    typedef std::map<std::string, Node*> NodeMap;
 
-		AttrList& graph_attributes() { return graph_attrs_;}
-		AttrList& node_attributes() { return node_attrs_; }
-		AttrList& edge_attributes() { return edge_attrs_; }
+    Node* check_node(Node*);
 
-	private:
-		typedef std::map< std::string, Node* > NodeMap;
+    bool visited_;
+    std::string name_;
+    Edges pred_, succ_;
+    NodeMap nodes_;
+    bool is_strict_, is_directed_;
+    AttrList graph_attrs_, node_attrs_, edge_attrs_;
+    unsigned nsubgr_;
+};
 
-		Node* check_node(Node*);
+typedef std::stack<Node*> NodeStack;
 
-		bool visited_;
-		std::string name_;
-		Edges pred_, succ_;
-		NodeMap nodes_;
-		bool is_strict_, is_directed_;
-		AttrList graph_attrs_, node_attrs_, edge_attrs_;
-		unsigned nsubgr_;
-	};
+template <typename _Process>
+class DFS {
+  public:
+    DFS(Graph* graph) : graph_(graph) {}
+    ~DFS() {}
 
-	typedef std::stack< Node* > NodeStack;
+    void run(_Process proc) {
+        dfs(graph_, proc);
+    }
 
-	template< typename _Process >
-	class DFS
-	{
-	public:
-		DFS(Graph* graph) : graph_(graph) {}
-		~DFS() {}
+  private:
+    void dfs(Graph* graph, _Process proc) {
+        NodeStack st;
+        ACT::DOT::NodeSet r;
 
-		void run(_Process proc)
-		{
-			dfs(graph_, proc);
-		}
+        proc(graph);
+        graph->clear_visited();
+        graph->roots(r);
+        for (ACT::DOT::NodeSet::iterator pn = r.begin(); pn != r.end(); ++pn) {
+            ACT::DOT::Node* n = *pn;
+            st.push(n);
+        }
+        while (!st.empty()) {
+            ACT::DOT::Node* node = st.top();
+            st.pop();
+            node->visited(true);
 
-	private:
-		void dfs(Graph* graph, _Process proc)
-		{
-			NodeStack st;
-			ACT::DOT::NodeSet r;
+            ACT::DOT::Graph* subgr = dynamic_cast<ACT::DOT::Graph*>(node);
+            if (subgr) {
+                dfs(subgr, proc);
+            } else {
+                proc(node);
+            }
+            ACT::DOT::Edges& succs = node->succ();
+            for (ACT::DOT::Edges::iterator pe = succs.begin(); pe != succs.end(); ++pe) {
+                ACT::DOT::Edge* e = *pe;
+                ACT::DOT::Node* n = e->tail();
+                if (!n->visited()) {
+                    st.push(n);
+                }
+            }
+        }
+    }
 
-			proc(graph);
-			graph->clear_visited();
-			graph->roots(r);
-			for(ACT::DOT::NodeSet::iterator pn = r.begin(); pn != r.end(); ++pn) {
-				ACT::DOT::Node* n = *pn;
-				st.push(n);
-			}
-			while(!st.empty()) {
-				ACT::DOT::Node* node = st.top();
-				st.pop();
-				node->visited(true);
+    Graph* graph_;
+};
 
-				ACT::DOT::Graph* subgr = dynamic_cast<ACT::DOT::Graph*>(node);
-				if(subgr) {
-					dfs(subgr, proc);
-				}
-				else {
-					proc(node);
-				}
-				ACT::DOT::Edges& succs = node->succ();
-				for(ACT::DOT::Edges::iterator pe = succs.begin(); pe != succs.end(); ++pe) {
-					ACT::DOT::Edge* e = *pe;
-					ACT::DOT::Node* n = e->tail();
-					if(!n->visited()) {
-						st.push(n);
-					}
-				}
+template <typename _Process>
+class DFSs {
+  public:
+    DFSs(Graph* graph) : graph_(graph) {}
+    ~DFSs() {}
 
-			}
-		}
+    void run(_Process proc) {
+        dfs(graph_, proc);
+    }
 
-		Graph* graph_;
-	};
+  private:
+    void dfs(Graph* graph, _Process proc) {
+        NodeStack st;
+        ACT::DOT::NodeSet r;
 
-	template< typename _Process >
-	class DFSs
-	{
-	public:
-		DFSs(Graph* graph) : graph_(graph) {}
-		~DFSs() {}
+        proc(graph);
+        graph->clear_visited();
+        graph->List(r);
+        for (ACT::DOT::NodeSet::iterator pn = r.begin(); pn != r.end(); ++pn) {
+            ACT::DOT::Node* n = *pn;
+            ACT::DOT::Graph* subgr = dynamic_cast<ACT::DOT::Graph*>(n);
+            if (subgr) {
+                dfs(subgr, proc);
+            } else {
+                proc(n);
+            }
+        }
+    }
 
-		void run(_Process proc)
-		{
-			dfs(graph_, proc);
-		}
+    Graph* graph_;
+};
+class GraphDump {
+  public:
+    GraphDump(std::ostream& os) : os_(os) {}
+    ~GraphDump() {}
 
-	private:
-		void dfs(Graph* graph, _Process proc)
-		{
-			NodeStack st;
-			ACT::DOT::NodeSet r;
+    inline void operator()(Graph* graph) {
+        os_ << std::endl
+            << "Graph '" << graph->name() << "' "
+            << ((graph->directed()) ? "directed " : "") << ((graph->strict()) ? "strict " : "") << ":"
+            << std::endl
+            << "========================================" << std::endl;
+        AttrList& gr_attr = graph->graph_attributes();
+        os_ << "Graph attributes: ";
+        for (AttrList::iterator pa = gr_attr.begin(); pa != gr_attr.end(); ++pa) {
+            os_ << pa->first << " = " << pa->second << " ";
+        }
+        os_ << std::endl
+            << "--------------------------------------" << std::endl;
+        AttrList& n_attr = graph->node_attributes();
+        os_ << "Node attributes: ";
+        for (AttrList::iterator pa = n_attr.begin(); pa != n_attr.end(); ++pa) {
+            os_ << pa->first << " = " << pa->second << " ";
+        }
+        os_ << std::endl
+            << "--------------------------------------" << std::endl;
+        AttrList& e_attr = graph->edge_attributes();
+        os_ << "Edge attributes: ";
+        for (AttrList::iterator pa = e_attr.begin(); pa != e_attr.end(); ++pa) {
+            os_ << pa->first << " = " << pa->second << " ";
+        }
+        os_ << std::endl
+            << "--------------------------------------" << std::endl;
+    }
 
-			proc(graph);
-			graph->clear_visited();
-			graph->List(r);
-			for(ACT::DOT::NodeSet::iterator pn = r.begin(); pn != r.end(); ++pn)
-			{
-				ACT::DOT::Node* n = *pn;
-				ACT::DOT::Graph* subgr = dynamic_cast<ACT::DOT::Graph*>(n);
-				if(subgr) {
-					dfs(subgr, proc);
-				}
-				else 
-				{
-					proc(n);
-				}
-				
-			}
-		}
+    inline void operator()(Node* node) {
+        os_ << "Node '" << node->name() << "' ";
+        NodeImpl* ni = dynamic_cast<NodeImpl*>(node);
+        if (ni) {
+            NodePort& port_loc = ni->port_location();
+            if (port_loc.first_ != "") {
+                os_ << ": (" << port_loc.first_ << ", " << port_loc.second_ << ") ";
+            }
+            std::string port_ang = ni->port_angle();
+            if (port_ang != "") {
+                os_ << "@ " << port_ang << " ";
+            }
+            AttrList& attr = ni->attributes();
+            for (AttrList::iterator pa = attr.begin(); pa != attr.end(); ++pa) {
+                os_ << pa->first << " = " << pa->second << " ";
+            }
+        }
+        os_ << ": ";
+        ACT::DOT::Edges& succs = node->succ();
+        for (ACT::DOT::Edges::iterator pe = succs.begin(); pe != succs.end(); ++pe) {
+            ACT::DOT::Edge* e = *pe;
+            ACT::DOT::Node* n = e->tail();
+            os_ << n->name() << " ";
+            AttrList& attrs = e->attributes();
+            if (attrs.size() > 0) {
+                os_ << "[";
+                for (AttrList::iterator pa = attrs.begin(); pa != attrs.end(); ++pa) {
+                    os_ << pa->first << " = " << pa->second << " ";
+                }
+                os_ << "] ";
+            }
+        }
+        os_ << std::endl;
+    }
 
-		Graph* graph_;
-	};
-	class GraphDump
-	{
-	public:
-		GraphDump(std::ostream& os) : os_(os) {}
-		~GraphDump() {}
-
-		inline void operator()(Graph* graph)
-		{
-			os_ << std::endl << "Graph '" << graph->name() << "' "
-				<< ((graph->directed()) ? "directed " : "") << ((graph->strict()) ? "strict ": "") << ":"
-				<< std::endl << "========================================" << std::endl;
-			AttrList& gr_attr = graph->graph_attributes();
-			os_ << "Graph attributes: ";
-			for(AttrList::iterator pa = gr_attr.begin(); pa != gr_attr.end(); ++pa) {
-				os_ << pa->first << " = " << pa->second << " ";
-			}
-			os_ << std::endl << "--------------------------------------" << std::endl;
-			AttrList& n_attr = graph->node_attributes();
-			os_ << "Node attributes: ";
-			for(AttrList::iterator pa = n_attr.begin(); pa != n_attr.end(); ++pa) {
-				os_ << pa->first << " = " << pa->second << " ";
-			}
-			os_ << std::endl << "--------------------------------------" << std::endl;
-			AttrList& e_attr = graph->edge_attributes();
-			os_ << "Edge attributes: ";
-			for(AttrList::iterator pa = e_attr.begin(); pa != e_attr.end(); ++pa) {
-				os_ << pa->first << " = " << pa->second << " ";
-			}
-			os_ << std::endl << "--------------------------------------" << std::endl;
-		}
-
-		inline void operator()(Node* node)
-		{
-			os_ << "Node '" << node->name() << "' ";
-			NodeImpl* ni = dynamic_cast<NodeImpl*>(node);
-			if(ni) {
-				NodePort& port_loc = ni->port_location();
-				if(port_loc.first_ != "") {
-					os_ << ": (" << port_loc.first_ << ", " << port_loc.second_ << ") "; 
-				}
-				std::string port_ang = ni->port_angle();
-				if(port_ang != "") {
-					os_ << "@ " << port_ang << " ";
-				}
-				AttrList& attr = ni->attributes();
-				for(AttrList::iterator pa = attr.begin(); pa != attr.end(); ++pa) {
-					os_ << pa->first << " = " << pa->second << " ";
-				}
-			}
-			os_ << ": ";
-			ACT::DOT::Edges& succs = node->succ();
-			for(ACT::DOT::Edges::iterator pe = succs.begin(); pe != succs.end(); ++pe) {
-				ACT::DOT::Edge* e = *pe;
-				ACT::DOT::Node* n = e->tail();
-				os_ << n->name() << " ";
-				AttrList& attrs = e->attributes();
-				if(attrs.size() > 0) {
-					os_ << "[";
-					for(AttrList::iterator pa = attrs.begin(); pa != attrs.end(); ++pa) {
-						os_ << pa->first << " = " << pa->second << " ";
-					}
-					os_ << "] ";
-				}
-			}
-			os_ << std::endl;
-		}
-
-	private:
-		std::ostream& os_;
-	};
+  private:
+    std::ostream& os_;
+};
 
 /*	inline std::ostream& operator<<(std::ostream& os, Graph& graph)
-	{
-		DFS<GraphDump> dump(&graph);
-		dump.run(GraphDump(os));
-		return os;
-	}*/
+        {
+                DFS<GraphDump> dump(&graph);
+                dump.run(GraphDump(os));
+                return os;
+        }*/
 std::ostream& operator<<(std::ostream& os, Graph& graph);
 
-}}
+} // namespace DOT
+} // namespace ACT
 
 #endif
